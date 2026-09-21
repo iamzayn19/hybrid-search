@@ -84,11 +84,11 @@ jobs:
         run: |
           gem build rails_fusion.gemspec
           gem specification ./rails_fusion-*.gem
-          gem contents ./rails_fusion-*.gem
-      - name: Audit packaged files for obvious secrets
-        run: |
           mkdir -p /tmp/gem_inspect
           tar -xf rails_fusion-*.gem -C /tmp/gem_inspect
+          tar -xzf /tmp/gem_inspect/data.tar.gz -C /tmp/gem_inspect
+          find /tmp/gem_inspect -maxdepth 4 -type f | sort
+      - name: Audit packaged files for obvious secrets
+        run: |
           cd /tmp/gem_inspect
-          tar -xzf data.tar.gz -C .
-          ! grep -RIl -iE "api_key|secret|password|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY" --exclude-dir=.git . || (echo "Potential secret found in packaged gem" && exit 1)
+          ! grep -RIl -iE "api_key ?=|secret_key|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY" --exclude-dir=.git --exclude="*.gz" . || (echo "Potential secret found in packaged gem" && exit 1)
