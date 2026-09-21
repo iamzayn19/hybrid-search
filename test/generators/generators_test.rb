@@ -3,31 +3,31 @@
 require "test_helper"
 require "rails/generators"
 require "rails/generators/test_case"
-require_relative "../../lib/generators/rails_fusion/install/install_generator"
-require_relative "../../lib/generators/rails_fusion/index/index_generator"
+require_relative "../../lib/generators/hybrid_search/install/install_generator"
+require_relative "../../lib/generators/hybrid_search/index/index_generator"
 
 class InstallGeneratorTest < Rails::Generators::TestCase
-  tests RailsFusion::Generators::InstallGenerator
+  tests HybridSearch::Generators::InstallGenerator
   destination File.expand_path("../../tmp/generators/install", __dir__)
   setup :prepare_destination
 
   def test_creates_initializer
     run_generator
-    assert_file "config/initializers/rails_fusion.rb" do |content|
-      assert_match(/RailsFusion.configure/, content)
+    assert_file "config/initializers/hybrid_search.rb" do |content|
+      assert_match(/HybridSearch.configure/, content)
     end
   end
 end
 
 class IndexGeneratorTest < Rails::Generators::TestCase
-  tests RailsFusion::Generators::IndexGenerator
+  tests HybridSearch::Generators::IndexGenerator
   destination File.expand_path("../../tmp/generators/index", __dir__)
   setup :prepare_destination
 
   def test_generates_migration_with_expected_statements
     run_generator %w[Product name description --embedding-column=search_embedding --dimensions=8 --distance=cosine]
 
-    migration_files = Dir[File.join(destination_root, "db/migrate/*add_rails_fusion_to_products.rb")]
+    migration_files = Dir[File.join(destination_root, "db/migrate/*add_hybrid_search_to_products.rb")]
     assert_equal 1, migration_files.size
 
     content = File.read(migration_files.first)

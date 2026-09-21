@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class SearchTest < RailsFusion::TestCase
+class SearchTest < HybridSearch::TestCase
   def test_exact_keyword_identifier_favors_lexical_result
     a = Product.create!(name: "Error 503 from Stripe", description: "checkout outage", account_id: 1,
                         status: "published")
@@ -40,7 +40,7 @@ class SearchTest < RailsFusion::TestCase
   end
 
   def test_semantic_only_result_appears_without_keyword_overlap
-    provider = RailsFusion::Embeddings::Fake.new(dimensions: 8)
+    provider = HybridSearch::Embeddings::Fake.new(dimensions: 8)
     vector = provider.embed(["quiet cabin for long haul travel"]).first
 
     match = Product.create!(name: "Zephyr Comfort Set", description: "totally unrelated words", account_id: 1,
@@ -63,13 +63,13 @@ class SearchTest < RailsFusion::TestCase
   end
 
   def test_dimension_mismatch_raises_clean_error
-    definition = Product.rails_fusion_definition
+    definition = Product.hybrid_search_definition
     original_provider = definition.embedding_config.provider
-    definition.embedding_config.provider = RailsFusion::Embeddings::Fake.new(dimensions: 3)
+    definition.embedding_config.provider = HybridSearch::Embeddings::Fake.new(dimensions: 3)
 
     Product.create!(name: "x", description: "y", account_id: 1, status: "published")
 
-    error = assert_raises(RailsFusion::EmbeddingDimensionError) do
+    error = assert_raises(HybridSearch::EmbeddingDimensionError) do
       Product.fusion_search("x", where: { account_id: 1 })
     end
     assert_match(/dimensions/, error.message)
@@ -79,7 +79,7 @@ class SearchTest < RailsFusion::TestCase
 
   def test_rrf_fusion_and_weight_overrides
     both = Product.create!(name: "stripe error 503", description: "checkout", account_id: 1, status: "published")
-    provider = Product.rails_fusion_definition.embedding_config.provider
+    provider = Product.hybrid_search_definition.embedding_config.provider
     both.update_columns(search_embedding: provider.embed(["stripe error 503"]).first)
 
     default_results = Product.fusion_search("stripe error 503", where: { account_id: 1 })
@@ -101,7 +101,7 @@ class SearchTest < RailsFusion::TestCase
   def test_tenant_isolation_across_both_channels
     tenant_a = Product.create!(name: "tenant a widget", description: "d", account_id: 1, status: "published")
     tenant_b = Product.create!(name: "tenant a widget", description: "d", account_id: 2, status: "published")
-    provider = Product.rails_fusion_definition.embedding_config.provider
+    provider = Product.hybrid_search_definition.embedding_config.provider
     shared_vector = provider.embed(["shared meaning vector"]).first
     tenant_a.update_columns(search_embedding: shared_vector)
     tenant_b.update_columns(search_embedding: shared_vector)
@@ -113,7 +113,7 @@ class SearchTest < RailsFusion::TestCase
   end
 
   def test_undeclared_filter_raises
-    assert_raises(RailsFusion::InvalidFilterError) do
+    assert_raises(HybridSearch::InvalidFilterError) do
       Product.fusion_search("x", where: { not_a_real_filter: 1 })
     end
   end
@@ -145,7 +145,7 @@ class SearchTest < RailsFusion::TestCase
 
   def test_configuration_error_when_model_not_configured
     klass = Class.new(ActiveRecord::Base) { self.table_name = "fusion_products" }
-    assert_raises(RailsFusion::ConfigurationError) { klass.fusion_search("x") }
+    assert_raises(HybridSearch::ConfigurationError) { klass.fusion_search("x") }
   end
 
   private

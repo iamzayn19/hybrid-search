@@ -6,7 +6,7 @@ a no-op backfill pass. Numbers are local-machine only and not published as marke
 claims — run it yourself to get numbers for your hardware and corpus size.
 
 ```bash
-createdb rails_fusion_benchmark
-psql rails_fusion_benchmark -c "CREATE EXTENSION vector;"
-PGDATABASE=rails_fusion_benchmark RECORDS=20000 bundle exec ruby benchmark/benchmark.rb
+createdb hybrid_search_benchmark
+psql hybrid_search_benchmark -c "CREATE EXTENSION vector;"
+PGDATABASE=hybrid_search_benchmark RECORDS=20000 bundle exec ruby benchmark/benchmark.rb
 ```

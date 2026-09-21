@@ -4,7 +4,7 @@ require "test_helper"
 
 class RRFTest < Minitest::Test
   def test_combines_contributions_from_both_channels
-    fused = RailsFusion::Ranking::RRF.fuse(
+    fused = HybridSearch::Ranking::RRF.fuse(
       keyword_ranks: { "1" => 1, "2" => 2 },
       semantic_ranks: { "1" => 3 },
       keyword_weight: 1.0, semantic_weight: 1.0, rrf_k: 60
@@ -17,7 +17,7 @@ class RRFTest < Minitest::Test
   end
 
   def test_missing_channel_contributes_zero_but_stays_eligible
-    fused = RailsFusion::Ranking::RRF.fuse(
+    fused = HybridSearch::Ranking::RRF.fuse(
       keyword_ranks: {}, semantic_ranks: { "5" => 1 },
       keyword_weight: 1.0, semantic_weight: 1.0, rrf_k: 60
     )
@@ -27,7 +27,7 @@ class RRFTest < Minitest::Test
   end
 
   def test_weight_overrides_change_score
-    fused = RailsFusion::Ranking::RRF.fuse(
+    fused = HybridSearch::Ranking::RRF.fuse(
       keyword_ranks: { "1" => 1 }, semantic_ranks: {},
       keyword_weight: 2.0, semantic_weight: 1.0, rrf_k: 60
     )

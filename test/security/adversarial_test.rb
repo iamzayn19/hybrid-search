@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class AdversarialTest < RailsFusion::TestCase
+class AdversarialTest < HybridSearch::TestCase
   def test_sql_injection_via_query_text_is_inert
     Product.create!(name: "safe", description: "d", account_id: 1, status: "published")
     payloads = [
@@ -33,28 +33,28 @@ class AdversarialTest < RailsFusion::TestCase
   end
 
   def test_undeclared_filter_key_raises
-    assert_raises(RailsFusion::InvalidFilterError) do
+    assert_raises(HybridSearch::InvalidFilterError) do
       Product.fusion_search("n", where: { "id > 0 OR 1=1" => 1 })
     end
   end
 
   def test_task_support_rejects_arbitrary_class_names
-    assert_raises(RailsFusion::ConfigurationError) do
-      RailsFusion::TaskSupport.require_model!("Kernel")
+    assert_raises(HybridSearch::ConfigurationError) do
+      HybridSearch::TaskSupport.require_model!("Kernel")
     end
   end
 
   def test_task_support_rejects_unconfigured_model
     klass_name = "FusionDoc" # exists, is an AR model, but has no auto-callbacks needed; still configured
-    assert RailsFusion::TaskSupport.resolve_model(klass_name)
+    assert HybridSearch::TaskSupport.resolve_model(klass_name)
 
-    assert_raises(RailsFusion::ConfigurationError) do
-      RailsFusion::TaskSupport.require_model!("NoSuchModelXYZ")
+    assert_raises(HybridSearch::ConfigurationError) do
+      HybridSearch::TaskSupport.require_model!("NoSuchModelXYZ")
     end
   end
 
   def test_column_names_are_validated_at_configuration_time
-    error = assert_raises(RailsFusion::ConfigurationError) do
+    error = assert_raises(HybridSearch::ConfigurationError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "fusion_products"
         fusion_search { text :"name; DROP TABLE fusion_products" }

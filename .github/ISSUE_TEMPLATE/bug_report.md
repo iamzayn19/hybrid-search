@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with RailsFusion
+about: Report a problem with HybridSearch
 ---
 
 **Describe the bug**

@@ -2,9 +2,9 @@
 
 require "test_helper"
 
-class DefinitionTest < RailsFusion::TestCase
+class DefinitionTest < HybridSearch::TestCase
   def test_rejects_unknown_text_column
-    assert_raises(RailsFusion::ConfigurationError) do
+    assert_raises(HybridSearch::ConfigurationError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "fusion_products"
         fusion_search { text :nope }
@@ -13,7 +13,7 @@ class DefinitionTest < RailsFusion::TestCase
   end
 
   def test_rejects_non_positive_dimensions
-    assert_raises(RailsFusion::ConfigurationError) do
+    assert_raises(HybridSearch::ConfigurationError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "fusion_products"
         fusion_search { embedding :search_embedding, dimensions: 0 }
@@ -22,7 +22,7 @@ class DefinitionTest < RailsFusion::TestCase
   end
 
   def test_rejects_unsupported_distance
-    assert_raises(RailsFusion::ConfigurationError) do
+    assert_raises(HybridSearch::ConfigurationError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "fusion_products"
         fusion_search { embedding :search_embedding, dimensions: 8, distance: :manhattan }
@@ -31,7 +31,7 @@ class DefinitionTest < RailsFusion::TestCase
   end
 
   def test_auto_embedding_requires_digest_column
-    assert_raises(RailsFusion::ConfigurationError) do
+    assert_raises(HybridSearch::ConfigurationError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "fusion_docs"
         fusion_search { embedding :search_embedding, dimensions: 8, auto: true }
@@ -40,7 +40,7 @@ class DefinitionTest < RailsFusion::TestCase
   end
 
   def test_rejects_unknown_filter_column
-    assert_raises(RailsFusion::ConfigurationError) do
+    assert_raises(HybridSearch::ConfigurationError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "fusion_products"
         fusion_search { filter :nonexistent }
@@ -49,7 +49,7 @@ class DefinitionTest < RailsFusion::TestCase
   end
 
   def test_rejects_non_timestamp_like_recency_column
-    assert_raises(RailsFusion::ConfigurationError) do
+    assert_raises(HybridSearch::ConfigurationError) do
       Class.new(ActiveRecord::Base) do
         self.table_name = "fusion_products"
         fusion_search { recency :published_at, half_life: -5 }

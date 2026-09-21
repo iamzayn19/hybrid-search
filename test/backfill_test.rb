@@ -2,12 +2,12 @@
 
 require "test_helper"
 
-class BackfillTest < RailsFusion::TestCase
+class BackfillTest < HybridSearch::TestCase
   def test_backfill_embeds_missing_records
     3.times { |i| Product.create!(name: "item #{i}", description: "d", account_id: 1, status: "published") }
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
 
-    summary = RailsFusion::Backfill.new(Product, mode: :sync).call
+    summary = HybridSearch::Backfill.new(Product, mode: :sync).call
 
     assert_equal 3, summary.processed
     assert_equal 3, summary.embedded
@@ -16,18 +16,18 @@ class BackfillTest < RailsFusion::TestCase
 
   def test_backfill_skips_current_records_unless_forced
     Product.create!(name: "item", description: "d", account_id: 1, status: "published")
-    RailsFusion::Backfill.new(Product, mode: :sync).call
+    HybridSearch::Backfill.new(Product, mode: :sync).call
 
-    summary = RailsFusion::Backfill.new(Product, mode: :sync).call
+    summary = HybridSearch::Backfill.new(Product, mode: :sync).call
     assert_equal 1, summary.skipped
     assert_equal 0, summary.embedded
   end
 
   def test_backfill_force_redoes_current_records
     Product.create!(name: "item", description: "d", account_id: 1, status: "published")
-    RailsFusion::Backfill.new(Product, mode: :sync).call
+    HybridSearch::Backfill.new(Product, mode: :sync).call
 
-    summary = RailsFusion::Backfill.new(Product, mode: :sync, force: true).call
+    summary = HybridSearch::Backfill.new(Product, mode: :sync, force: true).call
     assert_equal 1, summary.embedded
   end
 
@@ -35,7 +35,7 @@ class BackfillTest < RailsFusion::TestCase
     Product.create!(name: "ok", description: "d", account_id: 1, status: "published")
     broken = Product.create!(name: "broken", description: "d", account_id: 1, status: "published")
 
-    definition = Product.rails_fusion_definition
+    definition = Product.hybrid_search_definition
     original_provider = definition.embedding_config.provider
     failing = Object.new
     call_count = 0
@@ -48,7 +48,7 @@ class BackfillTest < RailsFusion::TestCase
     failing.define_singleton_method(:identity) { "flaky" }
     definition.embedding_config.provider = failing
 
-    summary = RailsFusion::Backfill.new(Product, mode: :sync).call
+    summary = HybridSearch::Backfill.new(Product, mode: :sync).call
 
     assert_equal 1, summary.failed
     assert_equal 1, summary.embedded
@@ -61,7 +61,7 @@ class BackfillTest < RailsFusion::TestCase
     Product.create!(name: "item", description: "d", account_id: 1, status: "published")
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
 
-    RailsFusion::Backfill.new(Product, mode: :async).call
+    HybridSearch::Backfill.new(Product, mode: :async).call
 
     assert_equal 1, ActiveJob::Base.queue_adapter.enqueued_jobs.size
   end

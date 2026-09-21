@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in rails_fusion.gemspec
+# Specify your gem's dependencies in hybrid_search.gemspec
 gemspec
 
 rails_version = ENV.fetch("RAILS_VERSION", nil)

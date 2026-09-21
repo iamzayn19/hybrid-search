@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class EmbeddingLifecycleTest < RailsFusion::TestCase
+class EmbeddingLifecycleTest < HybridSearch::TestCase
   def test_create_enqueues_embedding_job
     Product.create!(name: "a", description: "b", account_id: 1, status: "published")
     assert_equal 1, enqueued_embed_jobs.size
@@ -26,10 +26,10 @@ class EmbeddingLifecycleTest < RailsFusion::TestCase
 
   def test_job_persists_embedding_and_digest
     product = Product.create!(name: "a", description: "b", account_id: 1, status: "published")
-    definition = Product.rails_fusion_definition
-    digest = RailsFusion::Embeddings.source_digest(product, definition)
+    definition = Product.hybrid_search_definition
+    digest = HybridSearch::Embeddings.source_digest(product, definition)
 
-    RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest)
+    HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest)
     product.reload
 
     refute_nil product.search_embedding
@@ -38,28 +38,28 @@ class EmbeddingLifecycleTest < RailsFusion::TestCase
 
   def test_job_does_not_recurse_into_another_enqueue
     product = Product.create!(name: "a", description: "b", account_id: 1, status: "published")
-    definition = Product.rails_fusion_definition
-    digest = RailsFusion::Embeddings.source_digest(product, definition)
+    definition = Product.hybrid_search_definition
+    digest = HybridSearch::Embeddings.source_digest(product, definition)
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
 
-    RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest)
+    HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest)
 
     assert_equal 0, enqueued_embed_jobs.size
   end
 
   def test_stale_job_cannot_overwrite_newer_embedding
     product = Product.create!(name: "a", description: "b", account_id: 1, status: "published")
-    definition = Product.rails_fusion_definition
-    stale_digest = RailsFusion::Embeddings.source_digest(product, definition)
+    definition = Product.hybrid_search_definition
+    stale_digest = HybridSearch::Embeddings.source_digest(product, definition)
 
     # Content changes again before the stale job runs.
     product.update!(name: "changed after enqueue")
-    current_digest = RailsFusion::Embeddings.source_digest(product, definition)
-    RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, current_digest)
+    current_digest = HybridSearch::Embeddings.source_digest(product, definition)
+    HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, current_digest)
     product.reload
     current_vector = product.search_embedding
 
-    RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, stale_digest)
+    HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, stale_digest)
     product.reload
 
     assert_equal current_digest, product.search_embedding_digest
@@ -68,10 +68,10 @@ class EmbeddingLifecycleTest < RailsFusion::TestCase
 
   def test_duplicate_jobs_are_idempotent
     product = Product.create!(name: "a", description: "b", account_id: 1, status: "published")
-    definition = Product.rails_fusion_definition
-    digest = RailsFusion::Embeddings.source_digest(product, definition)
+    definition = Product.hybrid_search_definition
+    digest = HybridSearch::Embeddings.source_digest(product, definition)
 
-    2.times { RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest) }
+    2.times { HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest) }
     product.reload
 
     assert_equal digest, product.search_embedding_digest
@@ -80,11 +80,11 @@ class EmbeddingLifecycleTest < RailsFusion::TestCase
   def test_deleted_record_job_is_harmless
     product = Product.create!(name: "a", description: "b", account_id: 1, status: "published")
     id = product.id.to_s
-    definition = Product.rails_fusion_definition
-    digest = RailsFusion::Embeddings.source_digest(product, definition)
+    definition = Product.hybrid_search_definition
+    digest = HybridSearch::Embeddings.source_digest(product, definition)
     product.destroy!
 
-    RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", id, digest)
+    HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", id, digest)
   end
 
   def test_provider_error_propagates
@@ -92,31 +92,31 @@ class EmbeddingLifecycleTest < RailsFusion::TestCase
     def failing_provider.embed(_texts) = raise("boom")
     def failing_provider.identity = "failing"
 
-    RailsFusion.configure { |c| c.embedding_provider = failing_provider }
+    HybridSearch.configure { |c| c.embedding_provider = failing_provider }
     product = Product.new(name: "a", description: "b", account_id: 1, status: "published")
     product.save!
 
-    definition = Product.rails_fusion_definition
+    definition = Product.hybrid_search_definition
     original_provider = definition.embedding_config.provider
     definition.embedding_config.provider = nil # force fallback to global config
-    digest = RailsFusion::Embeddings.source_digest(product, definition)
+    digest = HybridSearch::Embeddings.source_digest(product, definition)
 
-    assert_raises(RuntimeError) { RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest) }
+    assert_raises(RuntimeError) { HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest) }
   ensure
     definition.embedding_config.provider = original_provider if defined?(original_provider)
   end
 
   def test_provider_returning_wrong_dimensions_raises
-    definition = Product.rails_fusion_definition
+    definition = Product.hybrid_search_definition
     original_provider = definition.embedding_config.provider
-    definition.embedding_config.provider = RailsFusion::Embeddings::Fake.new(dimensions: 3)
+    definition.embedding_config.provider = HybridSearch::Embeddings::Fake.new(dimensions: 3)
 
     product = Product.new(name: "a", description: "b", account_id: 1, status: "published")
     product.save!
-    digest = RailsFusion::Embeddings.source_digest(product, definition)
+    digest = HybridSearch::Embeddings.source_digest(product, definition)
 
-    assert_raises(RailsFusion::EmbeddingDimensionError) do
-      RailsFusion::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest)
+    assert_raises(HybridSearch::EmbeddingDimensionError) do
+      HybridSearch::Jobs::EmbedRecordJob.perform_now("Product", product.id.to_s, digest)
     end
   ensure
     definition.embedding_config.provider = original_provider
@@ -124,12 +124,12 @@ class EmbeddingLifecycleTest < RailsFusion::TestCase
 
   def test_digest_changes_when_model_config_changes
     product = Product.create!(name: "a", description: "b", account_id: 1, status: "published")
-    definition = Product.rails_fusion_definition
+    definition = Product.hybrid_search_definition
 
-    digest_1 = RailsFusion::Embeddings.source_digest(product, definition)
+    digest_1 = HybridSearch::Embeddings.source_digest(product, definition)
     original_provider = definition.embedding_config.provider
-    definition.embedding_config.provider = RailsFusion::Embeddings::Fake.new(model: "different-model", dimensions: 8)
-    digest_2 = RailsFusion::Embeddings.source_digest(product, definition)
+    definition.embedding_config.provider = HybridSearch::Embeddings::Fake.new(model: "different-model", dimensions: 8)
+    digest_2 = HybridSearch::Embeddings.source_digest(product, definition)
 
     refute_equal digest_1, digest_2
   ensure
@@ -149,6 +149,6 @@ class EmbeddingLifecycleTest < RailsFusion::TestCase
   private
 
   def enqueued_embed_jobs
-    ActiveJob::Base.queue_adapter.enqueued_jobs.select { |j| j[:job] == RailsFusion::Jobs::EmbedRecordJob }
+    ActiveJob::Base.queue_adapter.enqueued_jobs.select { |j| j[:job] == HybridSearch::Jobs::EmbedRecordJob }
   end
 end

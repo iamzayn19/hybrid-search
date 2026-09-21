@@ -2,12 +2,12 @@
 
 require "test_helper"
 
-class GlobalSearchTest < RailsFusion::TestCase
+class GlobalSearchTest < HybridSearch::TestCase
   def test_fuses_results_from_two_models
     Product.create!(name: "AI conference", description: "London event", account_id: 1, status: "published")
     Article.create!(title: "AI conference recap", body: "London", account_id: 1)
 
-    results = RailsFusion.search("AI conference London", models: [Product, Article])
+    results = HybridSearch.search("AI conference London", models: [Product, Article])
 
     models_seen = results.map(&:model).uniq
     assert_includes models_seen, Product
@@ -18,14 +18,14 @@ class GlobalSearchTest < RailsFusion::TestCase
     Product.create!(name: "widget", description: "d", account_id: 1, status: "published")
     Article.create!(title: "widget article", body: "b", account_id: 1)
 
-    assert_kind_of RailsFusion::GlobalResultSet, RailsFusion.search("widget", models: [Product, Article])
+    assert_kind_of HybridSearch::GlobalResultSet, HybridSearch.search("widget", models: [Product, Article])
   end
 
   def test_model_level_filters_respected
     Product.create!(name: "scoped", description: "d", account_id: 1, status: "published")
     Product.create!(name: "scoped", description: "d", account_id: 2, status: "published")
 
-    results = RailsFusion.search(
+    results = HybridSearch.search(
       "scoped", models: [Product], where: { Product => { account_id: 1 } }
     )
     assert(results.all? { |r| r.record.account_id == 1 })
@@ -33,7 +33,7 @@ class GlobalSearchTest < RailsFusion::TestCase
 
   def test_one_model_empty_does_not_break_search
     Article.create!(title: "solo result", body: "b", account_id: 1)
-    results = RailsFusion.search("solo result", models: [Product, Article])
+    results = HybridSearch.search("solo result", models: [Product, Article])
     refute results.empty?
   end
 
@@ -48,7 +48,7 @@ class GlobalSearchTest < RailsFusion::TestCase
       raise "boom"
     end
 
-    results = RailsFusion.search("ok", models: [Product, broken])
+    results = HybridSearch.search("ok", models: [Product, broken])
     assert results.degraded?
     assert results.errors.key?(broken)
   end
@@ -64,12 +64,12 @@ class GlobalSearchTest < RailsFusion::TestCase
     end
 
     assert_raises(RuntimeError) do
-      RailsFusion.search("ok", models: [Product, broken], fail_fast: true)
+      HybridSearch.search("ok", models: [Product, broken], fail_fast: true)
     end
   end
 
   def test_too_many_models_raises
     models = Array.new(25) { Product }
-    assert_raises(ArgumentError) { RailsFusion.search("x", models: models) }
+    assert_raises(ArgumentError) { HybridSearch.search("x", models: models) }
   end
 end

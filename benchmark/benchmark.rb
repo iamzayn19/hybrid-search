@@ -4,19 +4,19 @@
 # embeddings and times each stage of a hybrid search. Not run in CI; run
 # locally against a real PostgreSQL + pgvector database. See benchmark/README.md.
 #
-#   PGDATABASE=rails_fusion_benchmark RECORDS=20000 ruby benchmark/benchmark.rb
+#   PGDATABASE=hybrid_search_benchmark RECORDS=20000 ruby benchmark/benchmark.rb
 
 require "bundler/setup"
 require "active_record"
 require "benchmark"
-require_relative "../lib/rails_fusion"
+require_relative "../lib/hybrid_search"
 
 ActiveRecord::Base.establish_connection(
   adapter: "postgresql",
   host: ENV.fetch("PGHOST", "localhost"),
   port: ENV.fetch("PGPORT", "5433").to_i,
   username: ENV.fetch("PGUSER", ENV.fetch("USER", nil)),
-  database: ENV.fetch("PGDATABASE", "rails_fusion_benchmark")
+  database: ENV.fetch("PGDATABASE", "hybrid_search_benchmark")
 )
 
 ActiveRecord::Base.connection.execute("CREATE EXTENSION IF NOT EXISTS vector")
@@ -41,14 +41,14 @@ class BenchProduct < ActiveRecord::Base
     text :name, weight: :a
     text :description, weight: :b
     embedding :search_embedding, dimensions: 16,
-                                 provider: RailsFusion::Embeddings::Fake.new(dimensions: 16),
+                                 provider: HybridSearch::Embeddings::Fake.new(dimensions: 16),
                                  model: "bench-fake"
     filter :account_id
   end
 end
 
 record_count = ENV.fetch("RECORDS", "10000").to_i
-provider = BenchProduct.rails_fusion_definition.embedding_config.provider
+provider = BenchProduct.hybrid_search_definition.embedding_config.provider
 
 puts "Seeding #{record_count} records..."
 Benchmark.bm(30) do |x|
@@ -72,7 +72,7 @@ end
 Benchmark.bm(30) do |x|
   x.report("keyword candidates") { BenchProduct.fusion_search("widget gadget", where: { account_id: 1 }) }
   x.report("full hybrid search") { BenchProduct.fusion_search("widget gadget device", where: { account_id: 1 }) }
-  x.report("backfill (no-op)") { RailsFusion::Backfill.new(BenchProduct, mode: :sync).call }
+  x.report("backfill (no-op)") { HybridSearch::Backfill.new(BenchProduct, mode: :sync).call }
 end
 
 puts "Done. Results above are local-machine timings only; do not treat as portable benchmarks."

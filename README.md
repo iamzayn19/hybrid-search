@@ -1,15 +1,15 @@
-# RailsFusion
+# HybridSearch
 
 **Hybrid keyword + semantic search for Rails, powered by Postgres. No Elasticsearch, no separate vector database.**
 
-[![CI](https://github.com/iamzayn19/rails-fusion/actions/workflows/ci.yml/badge.svg)](https://github.com/iamzayn19/rails-fusion/actions/workflows/ci.yml)
-[![Gem Version](https://img.shields.io/gem/v/rails_fusion)](https://rubygems.org/gems/rails_fusion)
+[![CI](https://github.com/iamzayn19/hybrid-search/actions/workflows/ci.yml/badge.svg)](https://github.com/iamzayn19/hybrid-search/actions/workflows/ci.yml)
+[![Gem Version](https://img.shields.io/gem/v/hybrid_search)](https://rubygems.org/gems/hybrid_search)
 ![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.3-red)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 
 ## 30-second explanation
 
-RailsFusion gives an ActiveRecord model hybrid search in a few lines: PostgreSQL full-text
+HybridSearch gives an ActiveRecord model hybrid search in a few lines: PostgreSQL full-text
 search for exact words and identifiers, pgvector semantic similarity for meaning, and
 Reciprocal Rank Fusion (RRF) to combine the two into one ranked, explainable result list —
 all on the Postgres database your Rails app already runs.
@@ -35,7 +35,7 @@ Product.fusion_search("wireless headphones for long flights", where: { account_i
 
 Keyword search alone misses meaning ("noise cancelling" vs. "quiet cabin"). Semantic
 search alone can miss exact identifiers, error codes, and SKUs a user typed verbatim.
-RailsFusion runs both independently over the same filtered scope and fuses the rankings
+HybridSearch runs both independently over the same filtered scope and fuses the rankings
 with RRF, so an exact identifier match and a meaning-only match can both surface, ranked
 sensibly relative to each other.
 
@@ -44,27 +44,27 @@ sensibly relative to each other.
 Add to your Gemfile:
 
 ```ruby
-gem "rails_fusion"
+gem "hybrid_search"
 ```
 
 Then:
 
 ```bash
 bundle install
-bin/rails generate rails_fusion:install
+bin/rails generate hybrid_search:install
 ```
 
 ## PostgreSQL / pgvector requirement
 
-RailsFusion requires **PostgreSQL >= 14** with the [pgvector](https://github.com/pgvector/pgvector)
+HybridSearch requires **PostgreSQL >= 14** with the [pgvector](https://github.com/pgvector/pgvector)
 extension available. It does not support MySQL or SQLite; keyword-only search on those
-databases is not implemented or claimed. Run `bin/rails rails_fusion:doctor` to confirm
+databases is not implemented or claimed. Run `bin/rails hybrid_search:doctor` to confirm
 your setup, including whether pgvector is installed.
 
 ## Quick start
 
 ```bash
-bin/rails generate rails_fusion:index Product name description \
+bin/rails generate hybrid_search:index Product name description \
   --embedding-column=search_embedding --dimensions=1536 --distance=cosine
 bin/rails db:migrate
 ```
@@ -88,13 +88,13 @@ end
 ```
 
 ```ruby
-RailsFusion.configure do |config|
-  config.embedding_provider = RailsFusion::Embeddings::RubyLLMProvider.new(model: "text-embedding-3-small")
+HybridSearch.configure do |config|
+  config.embedding_provider = HybridSearch::Embeddings::RubyLLMProvider.new(model: "text-embedding-3-small")
 end
 ```
 
 ```bash
-bin/rails rails_fusion:backfill MODEL=Product
+bin/rails hybrid_search:backfill MODEL=Product
 ```
 
 ```ruby
@@ -125,7 +125,7 @@ end
 ```
 
 Configuration is validated against the model's actual columns at definition time, raising
-`RailsFusion::ConfigurationError` immediately with an actionable message — not silently at
+`HybridSearch::ConfigurationError` immediately with an actionable message — not silently at
 search time.
 
 ## Searching
@@ -154,7 +154,7 @@ result.matched_by         # => [:keyword, :semantic]
 result.explain            # machine-readable score breakdown
 ```
 
-`fusion_search` returns a `RailsFusion::ResultSet`, not an `ActiveRecord::Relation` —
+`fusion_search` returns a `HybridSearch::ResultSet`, not an `ActiveRecord::Relation` —
 results are already materialized and fused from two independent candidate queries, so
 further AR chaining would be misleading. Ordering is deterministic: ties are broken by
 primary key.
@@ -162,7 +162,7 @@ primary key.
 ## Filters / multi-tenancy
 
 Only columns declared with `filter` are accepted. An undeclared key raises
-`RailsFusion::InvalidFilterError`. Both the keyword and semantic candidate queries run
+`HybridSearch::InvalidFilterError`. Both the keyword and semantic candidate queries run
 against the exact same filtered scope, so a record from another tenant can never surface
 as a "close" semantic match — this is covered by adversarial tests (see
 `test/search/search_test.rb` and `test/security/adversarial_test.rb`).
@@ -176,17 +176,17 @@ Product.fusion_search("query", where: { account_id: nil })        # explicit nil
 ## Embedding providers
 
 ```ruby
-RailsFusion.configure do |config|
-  config.embedding_provider = RailsFusion::Embeddings::RubyLLMProvider.new(model: "text-embedding-3-small")
+HybridSearch.configure do |config|
+  config.embedding_provider = HybridSearch::Embeddings::RubyLLMProvider.new(model: "text-embedding-3-small")
 end
 ```
 
 Built-in adapters:
 
-- `RailsFusion::Embeddings::RubyLLMProvider` — backed by the [`ruby_llm`](https://github.com/crmne/ruby_llm)
+- `HybridSearch::Embeddings::RubyLLMProvider` — backed by the [`ruby_llm`](https://github.com/crmne/ruby_llm)
   gem, only registered when it is present in your bundle.
-- `RailsFusion::Embeddings::Callable` — wrap any lambda/client: `Callable.new { |texts| MyClient.embed(texts) }`.
-- `RailsFusion::Embeddings::Fake` — deterministic, local, no network. Good for development
+- `HybridSearch::Embeddings::Callable` — wrap any lambda/client: `Callable.new { |texts| MyClient.embed(texts) }`.
+- `HybridSearch::Embeddings::Fake` — deterministic, local, no network. Good for development
   and tests; **not** a real embedding model.
 
 A provider can be set globally or per index (`embedding ..., provider: my_provider`).
@@ -195,7 +195,7 @@ A provider can be set globally or per index (`embedding ..., provider: my_provid
 
 ## Automatic embedding lifecycle
 
-With `auto: true`, RailsFusion enqueues an `EmbedRecordJob` (Active Job) after a committed
+With `auto: true`, HybridSearch enqueues an `EmbedRecordJob` (Active Job) after a committed
 create/update, but only when the configured source fields actually changed. The job:
 
 1. re-checks the record's current content digest before generating a vector;
@@ -210,10 +210,10 @@ into another enqueue. Deleted records and duplicate jobs are harmless no-ops.
 ## Backfill / status / doctor
 
 ```bash
-bin/rails rails_fusion:doctor
-bin/rails rails_fusion:status MODEL=Product
-bin/rails rails_fusion:backfill MODEL=Product BATCH_SIZE=500
-bin/rails rails_fusion:backfill MODEL=Product FORCE=true ASYNC=true
+bin/rails hybrid_search:doctor
+bin/rails hybrid_search:status MODEL=Product
+bin/rails hybrid_search:backfill MODEL=Product BATCH_SIZE=500
+bin/rails hybrid_search:backfill MODEL=Product FORCE=true ASYNC=true
 ```
 
 `doctor` checks the database adapter, pgvector availability, model column/index
@@ -252,7 +252,7 @@ result.explain
 ## Global / multi-model search
 
 ```ruby
-RailsFusion.search(
+HybridSearch.search(
   "AI events in London",
   models: [Event, Community, Article],
   where: {
@@ -273,19 +273,19 @@ instead.
 ## Failure / fallback behavior
 
 ```ruby
-RailsFusion.configure { |config| config.semantic_failure = :keyword_only } # or :raise (default)
+HybridSearch.configure { |config| config.semantic_failure = :keyword_only } # or :raise (default)
 ```
 
 When semantic search is degraded (no provider configured, or the provider raised), results
 are still returned from keyword search, but `result.explain[:semantic][:degraded]` records
-why, and a `semantic_search_failure.rails_fusion` instrumentation event fires. RailsFusion
+why, and a `semantic_search_failure.hybrid_search` instrumentation event fires. HybridSearch
 never silently presents keyword-only results as full hybrid search.
 
 ## Instrumentation
 
-`ActiveSupport::Notifications` events: `search.rails_fusion`, `embedding.rails_fusion`,
-`backfill.rails_fusion`, `semantic_search_failure.rails_fusion`,
-`global_search_model_failure.rails_fusion`. Payloads never include secrets, full embedding
+`ActiveSupport::Notifications` events: `search.hybrid_search`, `embedding.hybrid_search`,
+`backfill.hybrid_search`, `semantic_search_failure.hybrid_search`,
+`global_search_model_failure.hybrid_search`. Payloads never include secrets, full embedding
 vectors, or raw query text by default. No telemetry is ever sent externally.
 
 ## Performance / index guidance
@@ -309,7 +309,7 @@ claims.
 ### Why not just Neighbor?
 
 [`neighbor`](https://github.com/ankane/neighbor) is an excellent nearest-neighbor building
-block, and its docs even show how to assemble a hybrid-search recipe by hand. RailsFusion
+block, and its docs even show how to assemble a hybrid-search recipe by hand. HybridSearch
 uses `neighbor` under the hood and focuses on the layer above it: declarative model
 configuration, full-text search setup, the embedding lifecycle (digest/staleness,
 race-safe jobs, backfill), safe multi-tenant filtering, rank fusion, explainability, global
@@ -317,7 +317,7 @@ search, and operational tooling — the integration work teams currently assembl
 
 ### Why not Elasticsearch / OpenSearch / Algolia?
 
-Those are excellent systems when a product needs their scale or feature set. RailsFusion
+Those are excellent systems when a product needs their scale or feature set. HybridSearch
 targets teams that want strong hybrid search while keeping data and search in the Postgres
 database they already operate. It does not claim to replace a dedicated search engine at
 every scale.
@@ -325,7 +325,7 @@ every scale.
 ### Why not pg_search?
 
 [`pg_search`](https://github.com/Casecommons/pg_search) is lexical full-text search.
-RailsFusion combines lexical and semantic ranking, plus the embedding lifecycle and
+HybridSearch combines lexical and semantic ranking, plus the embedding lifecycle and
 operational tooling pg_search does not address.
 
 ## Limitations
@@ -345,12 +345,12 @@ operational tooling pg_search does not address.
 ## Development
 
 ```bash
-git clone https://github.com/iamzayn19/rails-fusion.git
-cd rails-fusion
+git clone https://github.com/iamzayn19/hybrid-search.git
+cd hybrid-search
 bundle install
-createdb rails_fusion_test
-psql rails_fusion_test -c "CREATE EXTENSION vector;"
-PGDATABASE=rails_fusion_test bundle exec rake test
+createdb hybrid_search_test
+psql hybrid_search_test -c "CREATE EXTENSION vector;"
+PGDATABASE=hybrid_search_test bundle exec rake test
 bundle exec rubocop
 ```
 
@@ -359,7 +359,7 @@ See `CONTRIBUTING.md` for the full local PostgreSQL + pgvector test setup.
 ## Contributing
 
 Bug reports and pull requests are welcome at
-https://github.com/iamzayn19/rails-fusion. See `CONTRIBUTING.md`.
+https://github.com/iamzayn19/hybrid-search. See `CONTRIBUTING.md`.
 
 ## License
 

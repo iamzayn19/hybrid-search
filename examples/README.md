@@ -1,6 +1,6 @@
 # Examples
 
-Documented model/search snippets. All use `RailsFusion::Embeddings::Fake`, a deterministic,
+Documented model/search snippets. All use `HybridSearch::Embeddings::Fake`, a deterministic,
 local, no-network provider — no API keys required to try these.
 
 ## 1. Products
@@ -11,7 +11,7 @@ class Product < ApplicationRecord
     text :name, weight: :a
     text :description, weight: :b
     embedding :search_embedding, dimensions: 16,
-              provider: RailsFusion::Embeddings::Fake.new(dimensions: 16), auto: true
+              provider: HybridSearch::Embeddings::Fake.new(dimensions: 16), auto: true
     filter :account_id
     filter :status
   end
@@ -28,7 +28,7 @@ class Article < ApplicationRecord
     text :title, weight: :a
     text :body, weight: :b
     embedding :embedding, dimensions: 16,
-              provider: RailsFusion::Embeddings::Fake.new(dimensions: 16), auto: true
+              provider: HybridSearch::Embeddings::Fake.new(dimensions: 16), auto: true
     filter :account_id
     recency :published_at, half_life: 30.days
   end
@@ -59,7 +59,7 @@ Product.fusion_search("payment gateway is down")
 ## 5. Multi-model global search
 
 ```ruby
-RailsFusion.search(
+HybridSearch.search(
   "AI events in London",
   models: [Event, Article],
   where: { Event => { account_id: 1 }, Article => { account_id: 1 } },

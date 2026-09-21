@@ -9,7 +9,7 @@ class Product < ActiveRecord::Base
 
     embedding :search_embedding,
               dimensions: 8,
-              provider: RailsFusion::Embeddings::Fake.new(dimensions: 8),
+              provider: HybridSearch::Embeddings::Fake.new(dimensions: 8),
               model: "fake-test-model",
               distance: :cosine,
               auto: true
@@ -31,7 +31,7 @@ class Article < ActiveRecord::Base
 
     embedding :embedding,
               dimensions: 4,
-              provider: RailsFusion::Embeddings::Fake.new(dimensions: 4),
+              provider: HybridSearch::Embeddings::Fake.new(dimensions: 4),
               model: "fake-article-model",
               distance: :cosine,
               auto: true
@@ -49,7 +49,7 @@ class FusionDoc < ActiveRecord::Base
 
     embedding :search_embedding,
               dimensions: 8,
-              provider: RailsFusion::Embeddings::Fake.new(dimensions: 8),
+              provider: HybridSearch::Embeddings::Fake.new(dimensions: 8),
               model: "fake-doc-model",
               distance: :cosine
   end

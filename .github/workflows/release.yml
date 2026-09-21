@@ -19,7 +19,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: rails_fusion_test
+          POSTGRES_DB: hybrid_search_test
         ports:
           - 5432:5432
         options: >-
@@ -32,7 +32,7 @@ jobs:
       PGPORT: 5432
       PGUSER: postgres
       PGPASSWORD: postgres
-      PGDATABASE: rails_fusion_test
+      PGDATABASE: hybrid_search_test
     steps:
       - uses: actions/checkout@v5
         with:
@@ -47,6 +47,6 @@ jobs:
       - name: Lint
         run: bundle exec rubocop
       - name: Build gem
-        run: gem build rails_fusion.gemspec
+        run: gem build hybrid_search.gemspec
       - name: Release to RubyGems
         uses: rubygems/release-gem@v1

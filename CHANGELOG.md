@@ -18,12 +18,12 @@ Initial release.
   keyword and semantic channels.
 - Optional recency boost with a bounded, deterministic decay function.
 - Machine-readable `result.explain` score breakdown.
-- Multi-model global search (`RailsFusion.search`) with a second rank-fusion
+- Multi-model global search (`HybridSearch.search`) with a second rank-fusion
   layer across independently ranked models.
 - Graceful keyword-only degradation (`semantic_failure: :keyword_only`) with
   honest result metadata, or `:raise` (default).
-- `rails_fusion:install` and `rails_fusion:index` generators, including a
+- `hybrid_search:install` and `hybrid_search:index` generators, including a
   migration generator for pgvector/GIN indexes.
-- `rails_fusion:doctor`, `rails_fusion:status`, and `rails_fusion:backfill`
+- `hybrid_search:doctor`, `hybrid_search:status`, and `hybrid_search:backfill`
   operational tasks.
 - `ActiveSupport::Notifications` instrumentation with no telemetry.
