@@ -1,0 +1,56 @@
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "test/dummy/**/*"
+    - "tmp/**/*"
+    - "vendor/**/*"
+
+Metrics/BlockLength:
+  Max: 50
+  Exclude:
+    - "test/**/*.rb"
+    - "*.gemspec"
+    - "Rakefile"
+
+Metrics/ClassLength:
+  Max: 200
+
+Metrics/MethodLength:
+  Max: 30
+
+Metrics/AbcSize:
+  Max: 40
+
+Metrics/CyclomaticComplexity:
+  Max: 16
+
+Metrics/PerceivedComplexity:
+  Max: 16
+
+Metrics/ParameterLists:
+  Max: 10
+
+Style/Documentation:
+  Enabled: false
+
+Style/MultilineBlockChain:
+  Enabled: false
+
+Lint/AmbiguousBlockAssociation:
+  Exclude:
+    - "test/**/*.rb"
+
+Naming/VariableNumber:
+  Exclude:
+    - "test/**/*.rb"
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes

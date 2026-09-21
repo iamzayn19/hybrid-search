@@ -1,0 +1,36 @@
+<% migration_version = "[#{ActiveRecord::Migration.current_version}]" rescue "" %>
+class <%= migration_class_name %> < ActiveRecord::Migration<%= migration_version %>
+  def change
+    enable_extension "vector" unless extension_enabled?("vector")
+
+    unless column_exists?(:<%= table_name %>, :<%= embedding_column %>)
+      add_column :<%= table_name %>, :<%= embedding_column %>, :vector, limit: <%= dimensions %>
+    end
+
+    unless column_exists?(:<%= table_name %>, :<%= digest_column %>)
+      add_column :<%= table_name %>, :<%= digest_column %>, :string
+    end
+
+    unless index_exists?(:<%= table_name %>, :<%= embedding_column %>, name: "<%= index_name('hnsw') %>")
+      add_index :<%= table_name %>, :<%= embedding_column %>,
+                using: :hnsw, opclass: :<%= distance_ops %>, name: "<%= index_name('hnsw') %>"
+    end
+<% if text_fields.any? -%>
+
+    reversible do |dir|
+      dir.up do
+        unless index_exists?(:<%= table_name %>, name: "<%= index_name('fts') %>")
+          execute <<-SQL.squish
+            CREATE INDEX "<%= index_name('fts') %>" ON <%= table_name %>
+            USING gin ((<%= tsvector_expression %>))
+          SQL
+        end
+      end
+
+      dir.down do
+        execute 'DROP INDEX IF EXISTS "<%= index_name('fts') %>"'
+      end
+    end
+<% end -%>
+  end
+end

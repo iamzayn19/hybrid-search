@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Ruby ${{ matrix.ruby }} / Rails ${{ matrix.rails }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ruby: "3.3"
+            rails: "~> 7.2.0"
+          - ruby: "3.4"
+            rails: "~> 8.1.0"
+          - ruby: "3.3"
+            rails: "" # current default from the gemspec range
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rails_fusion_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RAILS_VERSION: ${{ matrix.rails }}
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: rails_fusion_test
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Run tests
+        run: bundle exec rake test
+      - name: Build gem
+        run: bundle exec rake build
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Rubocop
+        run: bundle exec rubocop
+
+  package:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Build and inspect gem contents
+        run: |
+          gem build rails_fusion.gemspec
+          gem specification ./rails_fusion-*.gem
+          gem contents ./rails_fusion-*.gem
+      - name: Audit packaged files for obvious secrets
+        run: |
+          mkdir -p /tmp/gem_inspect
+          tar -xf rails_fusion-*.gem -C /tmp/gem_inspect
+          cd /tmp/gem_inspect
+          tar -xzf data.tar.gz -C .
+          ! grep -RIl -iE "api_key|secret|password|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY" --exclude-dir=.git . || (echo "Potential secret found in packaged gem" && exit 1)
